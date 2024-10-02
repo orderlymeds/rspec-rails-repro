@@ -46,3 +46,35 @@ ActiveSupport::MessageEncryptor::InvalidMessage: ActiveSupport::MessageEncryptor
 /Users/wfarr/.gem/ruby/3.3.5/gems/railties-7.2.1/lib/rails/initializable.rb:32:in `run'
 /Users/wfarr/.gem/ruby/3.3.5/gems/railties-7.2.1/lib/rails/initializable.rb:61:in `block in run_initializers'
 ```
+
+## What about minitest?
+
+So this is interesting.
+
+I decided to check out minitest by setting `require: false` on the rspec-rails gem locally, and here's what I found:
+
+```
+# this works
+bin/rails test
+
+# this also works
+env GO_BOOM=1 bin/rails test
+
+# this does not!
+env GO_BOOM=1 bin/rails environment test --trace
+** Invoke environment (first_time)
+** Execute environment
+bin/rails aborted!
+ActiveSupport::MessageEncryptor::InvalidMessage: ActiveSupport::MessageEncryptor::InvalidMessage
+/Users/wfarr/.gem/ruby/3.3.5/gems/activesupport-7.2.1/lib/active_support/messages/codec.rb:57:in `catch_and_raise'
+/Users/wfarr/.gem/ruby/3.3.5/gems/activesupport-7.2.1/lib/active_support/message_encryptor.rb:242:in `decrypt_and_verify'
+/Users/wfarr/.gem/ruby/3.3.5/gems/activesupport-7.2.1/lib/active_support/encrypted_file.rb:109:in `decrypt'
+/Users/wfarr/.gem/ruby/3.3.5/gems/activesupport-7.2.1/lib/active_support/encrypted_file.rb:72:in `read'
+/Users/wfarr/.gem/ruby/3.3.5/gems/activesupport-7.2.1/lib/active_support/encrypted_configuration.rb:57:in `read'
+/Users/wfarr/.gem/ruby/3.3.5/gems/activesupport-7.2.1/lib/active_support/encrypted_configuration.rb:76:in `config'
+/Users/wfarr/.gem/ruby/3.3.5/gems/activesupport-7.2.1/lib/active_support/encrypted_configuration.rb:95:in `options'
+/Users/wfarr/.gem/ruby/3.3.5/gems/activesupport-7.2.1/lib/active_support/delegation.rb:188:in `method_missing'
+/Users/wfarr/src/rspec-rails-repro/config/initializers/boom.rb:2:in `<main>'
+```
+
+This suggests that anything that puts environment load in the prerequisites before we've swapped to `RAILS_ENV=test` and the appropriate `RAILS_MASTER_KEY` causes either the wrong credentials file or the wrong `RAILS_MASTER_KEY` to be used, resulting in an exception
